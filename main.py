@@ -19,7 +19,7 @@ dp = Dispatcher()
 DB_FILE = "used_tokens.txt"
 BLACKLIST_FILE = "blacklist.txt"
 
-NAMES = ["Вектор", "Виктор", "Пробив", "Пробить", "Докс", "Шоколадный глаз", "Глаз бога", "Пробивала", "Шерлок", "Духлес"]
+NAMES = ["Вектор", "Узнать инфу", "Пробив", "Пробить", "Докс", "Шоколадный глаз", "Глаз бога", "Пробивала", "Шерлок", "Духлес"]
 
 def gen_username():
     letters = string.ascii_lowercase
@@ -58,7 +58,7 @@ def save_to_file(data, file_path):
 async def cmd_start(message: types.Message):
     if is_listed(message.from_user.id, BLACKLIST_FILE): return
     await message.answer(
-        "👋 Привет! Здесь ты можешь сдать бота за деньги / звёзды / крипту.\n"
+        "👋 Привет! Здесь ты можешь сдать свой токен за деньги / звёзды / крипту.\n"
         "Нажми кнопку ниже, и я подберу задание для тебя.",
         reply_markup=main_kb
     )
@@ -70,13 +70,13 @@ async def step_1(message: types.Message):
     name = random.choice(NAMES)
     username = gen_username()
     
-    await message.answer("1️⃣ **Шаг первый:**\nПерейдите в @BotFather, нажмите СТАРТ и напишите команду `/newbot`.")
+    await message.answer("1️⃣ Шаг первый:\nПерейдите в @BotFather, нажмите СТАРТ и напишите команду `/newbot`.")
     await asyncio.sleep(1)
     await message.answer(f"Теперь перешлите название бота туда:\n`{name}`", parse_mode="Markdown")
     await asyncio.sleep(1)
-    await message.answer(f"2️⃣ **Шаг второй:**\nКогда он попросит юзернейм, отправьте это:\n`{username}`", parse_mode="Markdown")
+    await message.answer(f"2️⃣ Шаг второй:\nКогда он попросит юзернейм, отправьте это:\n`{username}`", parse_mode="Markdown")
     await asyncio.sleep(1)
-    await message.answer("3️⃣ **Шаг третий:**\nСкопируйте API токен от @BotFather и пришлите его мне!")
+    await message.answer("3️⃣ Шаг третий:\nСкопируйте API токен (1234...:ABCd5...) от @BotFather и пришлите его мне!")
 
 @dp.message()
 async def handle_token(message: types.Message):
