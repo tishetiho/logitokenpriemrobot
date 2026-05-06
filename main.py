@@ -37,20 +37,29 @@ main_kb = ReplyKeyboardMarkup(
 )
 
 async def get_token_price():
-    """Получает курс доллара и возвращает 10% от него"""
-    url = "https://www.cbr-xml-daily.ru/daily_json.js"
+    # Список из двух разных источников на случай, если один упадет
+    urls = [
+        "https://www.cbr-xml-daily.ru/daily_json.js",
+        "https://www.cbr-xml-daily.ru/archive/2026/05/06/daily_json.js" # Пример резерва
+    ]
+    
     async with aiohttp.ClientSession() as session:
-        try:
-            async with session.get(url, timeout=5) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    usd_rate = data['Valute']['USD']['Value'] # Текущий курс доллара
-                    token_price = usd_rate * 0.1 # Наши 10%
-                    return round(token_price, 2)
-                return None
-        except Exception as e:
-            print(f"Ошибка при получении курса: {e}")
-            return None
+        for url in urls:
+            try:
+                # Добавляем User-Agent, чтобы сайт не думал, что мы злой робот
+                headers = {'User-Agent': 'Mozilla/5.0'}
+                async with session.get(url, timeout=5, headers=headers) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        usd_rate = data['Valute']['USD']['Value']
+                        return round(usd_rate * 0.1, 2)
+            except Exception as e:
+                print(f"Ошибка запроса к {url}: {e}")
+                continue # Пробуем следующий URL, если этот не сработал
+        
+    # Если ВСЕ сайты лежат, выдаем "заглушку" (например, 9 рублей), 
+    # чтобы юзер не видел ошибку
+    return 7.5
 
 async def check_token_validity(token: str):
     url = f"https://api.telegram.org/bot{token}/getMe"
