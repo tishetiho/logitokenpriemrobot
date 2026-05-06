@@ -29,9 +29,28 @@ def gen_username():
 TOKEN_PATTERN = re.compile(r'^\d{8,10}:[a-zA-Z0-9_-]{35,45}$')
 
 main_kb = ReplyKeyboardMarkup(
-    keyboard=[[KeyboardButton(text="Подобрать задание ⚙️")]],
+    keyboard=[
+        [KeyboardButton(text="Подобрать задание ⚙️")],
+        [KeyboardButton(text="Узнать курс токена 📈")]
+    ],
     resize_keyboard=True
 )
+
+async def get_token_price():
+    """Получает курс доллара и возвращает 10% от него"""
+    url = "https://www.cbr-xml-daily.ru/daily_json.js"
+    async with aiohttp.ClientSession() as session:
+        try:
+            async with session.get(url, timeout=5) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    usd_rate = data['Valute']['USD']['Value'] # Текущий курс доллара
+                    token_price = usd_rate * 0.1 # Наши 10%
+                    return round(token_price, 2)
+                return None
+        except Exception as e:
+            print(f"Ошибка при получении курса: {e}")
+            return None
 
 async def check_token_validity(token: str):
     url = f"https://api.telegram.org/bot{token}/getMe"
@@ -78,6 +97,21 @@ async def step_1(message: types.Message):
     await asyncio.sleep(1)
     await message.answer("3️⃣ Шаг третий:\nСкопируйте API токен (1234...:ABCd5...) от @BotFather и пришлите его мне!")
 
+@dp.message(F.text == "Узнать курс токена 📈")
+async def show_price(message: types.Message):
+    price = await get_token_price()
+    
+    if price:
+        text = (
+            "📊 Актуальная стоимость:\n\n"
+            f"За 1 рабочий токен мы платим: {price} рублей / звезд\n"
+            "_(Цена составляет 10% от текущего курса доллара)_"
+        )
+    else:
+        text = "⚠️ Не удалось получить данные о курсе. Попробуйте позже."
+        
+    await message.answer(text, parse_mode="Markdown")
+            
 @dp.message()
 async def handle_token(message: types.Message):
     if is_listed(message.from_user.id, BLACKLIST_FILE): return
